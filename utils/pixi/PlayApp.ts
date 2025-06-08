@@ -7,6 +7,14 @@ import { defaultSkin } from './Player/skins'
 import signal from '../signal'
 // import { createClient } from '../supabase/client'
 import { gsap } from 'gsap'
+import { joinRoom, initializeWebSocket, updatePlayerPosition, leaveRoom } from '../multiplayer/API_CALLS/Player_Calls'
+import { OtherPlayer } from './Player/OtherPlayer'
+
+declare global {
+    interface WebSocketMessage {
+        player_id?: string;
+    }
+}
 
 export class PlayApp extends App {
     private scale: number = 1.5
@@ -18,7 +26,7 @@ export class PlayApp extends App {
     private fadeDuration: number = 0.5
     //public uid: string = ''
     // public realmId: string = ''
-    public players: { [key: string]: Player } = {}
+    public players: { [key: string]: OtherPlayer } = {}
     private disableInput: boolean = false
 
     // private kicked: boolean = false
@@ -28,6 +36,9 @@ export class PlayApp extends App {
     private fadeAnimation: gsap.core.Tween | null = null
     private currentPrivateAreaTiles: TilePoint[] = []
     public proximityId: string | null = null
+
+    private positionUpdateInterval: number | null = null;
+    private lastSentPosition: { x: number; y: number } | null = null;
 
     constructor(realmData: RealmData, username: string, skin: string = defaultSkin) {
         super(realmData)
@@ -50,7 +61,7 @@ export class PlayApp extends App {
         this.fadeTiles = {}
         this.fadeTileContainer.removeChildren()
 
-        for (const [key] of Object.entries(this.realmData.rooms[this.currentRoomIndex].tilemap)) {
+        for (const key of Object.keys(this.realmData.rooms[this.currentRoomIndex].tilemap)) {
             const [x, y] = key.split(',').map(Number)
             const screenCoordinates = this.convertTileToScreenCoordinates(x, y)
             const tile: PIXI.Sprite = new PIXI.Sprite(PIXI.Assets.get('/sprites/faded-tile.png'))
@@ -67,13 +78,14 @@ export class PlayApp extends App {
             this.fadeAnimation.kill();
         }
 
-        this.currentPrivateAreaTiles = []
+        this.currentPrivateAreaTiles = [];
         // get all tiles with privateAreaId
-        const tiles = Object.entries(this.realmData.rooms[this.currentRoomIndex].tilemap).filter(([key, value]) => value.privateAreaId === privateAreaId)
+        const tiles = Object.entries(this.realmData.rooms[this.currentRoomIndex].tilemap)
+            .filter((entry) => entry[1].privateAreaId === privateAreaId);
         for (const [key] of tiles) {
-            const tile = this.fadeTiles[key as TilePoint]
-            tile.alpha = 0
-            this.currentPrivateAreaTiles.push(key as TilePoint)
+            const tile = this.fadeTiles[key as TilePoint];
+            tile.alpha = 0;
+            this.currentPrivateAreaTiles.push(key as TilePoint);
         }
 
         this.fadeAnimation = gsap.to(this.fadeTileContainer, { 
@@ -81,9 +93,9 @@ export class PlayApp extends App {
             duration: 0.25, 
             ease: 'power2.out',
             onComplete: () => {
-                this.fadeAnimation = null
+                this.fadeAnimation = null;
             }
-        })
+        });
     }
 
     public fadeOutTiles = () => {
@@ -168,9 +180,82 @@ export class PlayApp extends App {
         this.setUpKeyboardEvents()
         this.setUpFadeOverlay()
         this.setUpSignalListeners()
-        // this.setUpSocketEvents() // Commented out socket setup
+
+        // Initialize multiplayer in the background
+        this.initializeMultiplayer().catch(error => {
+            console.error('Multiplayer initialization failed:', error)
+        })
 
         this.fadeOut()
+
+        PIXI.Ticker.shared.add(() => {
+            Object.values(this.players).forEach(player => player.update());
+        });
+    }
+
+    private async initializeMultiplayer() {
+        try {
+            const roomData = await joinRoom(this.player.username);
+            await this.updateOtherPlayers(roomData.players);
+
+            // Start position update interval
+            this.startPositionUpdates();
+
+            await initializeWebSocket(this.player.username, (data) => {
+                if (data.type === 'player_joined') {
+                    console.log('[WebSocket] player_joined:', data.player_id, data.position);
+                }
+                switch (data.type) {
+                    case 'position_update':
+                        if (data.player_id && data.position) {
+                            this.updatePlayer(data.player_id, data.position);
+                        }
+                        break;
+                    case 'player_joined':
+                        if (data.player_id && data.position) {
+                            this.updatePlayer(data.player_id, data.position);
+                        }
+                        break;
+                    case 'player_left':
+                        if (data.player_id) {
+                            if (this.players[data.player_id]) {
+                                this.players[data.player_id].destroy();
+                                delete this.players[data.player_id];
+                            }
+                        }
+                        break;
+                }
+            });
+        } catch (error) {
+            console.error('[MULTIPLAYER] Error:', error);
+        }
+    }
+
+    private async updateOtherPlayers(players: Array<{ id: string; position: { x: number; y: number } }>) {
+        console.log('[updateOtherPlayers] players:', players);
+        for (const player of players) {
+            if (player.id !== this.player.username) {
+                await this.updatePlayer(player.id, player.position);
+            }
+        }
+    }
+
+    private async updatePlayer(playerId: string, position: { x: number; y: number }) {
+        if (this.players[playerId]) {
+            this.players[playerId].setPosition(position.x, position.y);
+        } else {
+            console.log('[updatePlayer] Player not found, spawning:', playerId, position);
+            await this.spawnPlayer(playerId, position);
+        }
+    }
+
+    private async spawnPlayer(playerId: string, position: { x: number; y: number }) {
+        // Use a default skin or pass the correct skin if available
+        const skin = '009'; // Or get from player data if available
+        const otherPlayer = new OtherPlayer(playerId, skin);
+        otherPlayer.setPosition(position.x, position.y);
+        this.layers.object.addChild(otherPlayer);
+        this.players[playerId] = otherPlayer;
     }
 
     private spawnLocalPlayer = async () => {
@@ -492,7 +577,57 @@ export class PlayApp extends App {
     }
 
     public destroy() {
+        console.log('Cleaning up PlayApp...');
+        // Clear position update interval
+        if (this.positionUpdateInterval) {
+            clearInterval(this.positionUpdateInterval);
+            this.positionUpdateInterval = null;
+        }
+        leaveRoom();
         this.removeEvents()
         super.destroy()
+    }
+
+    // Update player position on backend and broadcast to others
+    public movePlayer = (x: number, y: number) => {
+        if (this.player.frozen || this.disableInput) return;
+        const tileX = Math.floor(x / 32);
+        const tileY = Math.floor(y / 32);
+        if (this.isValidMove(tileX, tileY)) {
+            this.player.moveToTile(tileX, tileY);
+            this.player.setMovementMode('keyboard');
+            
+            const position = { x: tileX * 32, y: tileY * 32 };
+            updatePlayerPosition(position);
+        }
+    }
+
+    private isValidMove = (x: number, y: number): boolean => {
+        const tile = `${x}, ${y}` as TilePoint;
+        return !this.blocked.has(tile);
+    }
+
+    private startPositionUpdates() {
+        // Clear any existing interval
+        if (this.positionUpdateInterval) {
+            clearInterval(this.positionUpdateInterval);
+        }
+
+        // Send position updates every 100ms
+        this.positionUpdateInterval = window.setInterval(() => {
+            const currentPosition = {
+                x: this.player.parent.x,
+                y: this.player.parent.y
+            };
+
+            // Only send if position has changed
+            if (!this.lastSentPosition || 
+                this.lastSentPosition.x !== currentPosition.x || 
+                this.lastSentPosition.y !== currentPosition.y) {
+               
+                updatePlayerPosition(currentPosition);
+                this.lastSentPosition = currentPosition;
+            }
+        }, 100);
     }
 }

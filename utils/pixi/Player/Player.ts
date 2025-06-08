@@ -75,22 +75,26 @@ export class Player {
     }
 
     private async loadAnimations() {
-        const src = `/sprites/characters/Character_${this.skin}.png`
-        await PIXI.Assets.load(src)
+        const src = `/sprites/characters/Character_${this.skin}.png`;
+        await PIXI.Assets.load(src);
 
-        const spriteSheetData = JSON.parse(JSON.stringify(playerSpriteSheetData))
-        spriteSheetData.meta.image = src
+        const spriteSheetData = JSON.parse(JSON.stringify(playerSpriteSheetData));
+        spriteSheetData.meta.image = src;
 
-        this.sheet = new PIXI.Spritesheet(PIXI.Texture.from(src), spriteSheetData)
-        await this.sheet.parse()
+        this.sheet = new PIXI.Spritesheet(PIXI.Texture.from(src), spriteSheetData);
+        await this.sheet.parse();
 
-        const animatedSprite = new PIXI.AnimatedSprite(this.sheet.animations['idle_down'])
-        animatedSprite.animationSpeed = this.animationSpeed
-        animatedSprite.play()
+        // Create animated sprite
+        const animatedSprite = new PIXI.AnimatedSprite(this.sheet.animations['idle_down']);
+        animatedSprite.animationSpeed = this.animationSpeed;
+        animatedSprite.play();
 
-        if (!this.initialized) {
-            this.parent.addChild(animatedSprite)
-        }
+        // Clear existing children
+        this.parent.removeChildren();
+
+        // Add sprite and username
+        this.parent.addChild(animatedSprite);
+        this.addUsername();
     }
 
     public changeSkin = async (skin: string) => {
@@ -110,11 +114,11 @@ export class Player {
                 fontSize: 128,
                 fill: 0xFFFFFF,
             }
-        })
-        text.anchor.set(0.5)
-        text.scale.set(0.07)
-        text.y = 8
-        this.parent.addChild(text)
+        });
+        text.anchor.set(0.5);
+        text.scale.set(0.07);
+        text.y = 8;
+        this.parent.addChild(text);
     }
 
     public setMessage(message: string) {
@@ -157,17 +161,16 @@ export class Player {
     }
 
     public async init() {
-        if (this.initialized) return
-        await this.loadAnimations()
-        this.addUsername()
-        this.initialized = true
+        if (this.initialized) return;
+        await this.loadAnimations();
+        this.initialized = true;
     }
 
     public setPosition(x: number, y: number) {
-        const pos = this.convertTilePosToPlayerPos(x, y)
-        this.parent.x = pos.x
-        this.parent.y = pos.y
-        this.currentTilePosition = { x, y }
+        const pos = this.convertTilePosToPlayerPos(x, y);
+        this.parent.x = pos.x;
+        this.parent.y = pos.y;
+        this.currentTilePosition = { x, y };
     }
 
     private convertTilePosToPlayerPos = (x: number, y: number) => {

@@ -1,0 +1,111 @@
+import { BACKEND_HTTP_URL, BACKEND_WS_URL, ENDPOINTS } from './config';
+
+interface RoomResponse {
+  room_id: string;
+  players: Array<{
+    id: string;
+    position: { x: number; y: number };
+  }>;
+}
+
+interface WebSocketMessage {
+  type: string;
+  playerId?: string;
+  player_id?: string;
+  position?: { x: number; y: number };
+}
+
+let ws: WebSocket | null = null;
+
+export async function joinRoom(userId: string): Promise<RoomResponse> {
+  if (!userId) throw new Error('User ID is required to join room');
+  
+  console.log('Attempting to join room for user:', userId);
+  try {
+    const response = await fetch(BACKEND_HTTP_URL + ENDPOINTS.JOIN_ROOM, {
+      method: 'POST',
+      headers: {
+        'Authorization': userId,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Failed to join room:', error);
+      throw new Error(`Failed to join room: ${error}`);
+    }
+
+    const roomData = await response.json();
+    console.log('Successfully joined room:', roomData);
+    return roomData;
+  } catch (e) {
+    console.error('Error joining room:', e);
+    throw e;
+  }
+}
+
+export function initializeWebSocket(userId: string, onMessage: (data: WebSocketMessage) => void): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    if (ws) {
+      console.log('Closing existing WebSocket connection');
+      ws.close();
+    }
+
+    console.log('Initializing new WebSocket connection for user:', userId);
+    ws = new WebSocket(`${BACKEND_WS_URL}${ENDPOINTS.WS}?token=${encodeURIComponent(userId)}`);
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected successfully');
+      resolve(ws!);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        onMessage(data);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      reject(error);
+    };
+
+    ws.onclose = (event) => {
+      console.log('WebSocket disconnected:', event.code, event.reason);
+      ws = null;
+    };
+  });
+}
+
+export function updatePlayerPosition(position: { x: number; y: number }) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error('Cannot send position update - WebSocket is not connected');
+    return;
+  }
+
+  const message = {
+    type: 'position_update',
+    position: position
+  };
+
+  ws.send(JSON.stringify(message));
+}
+
+export function leaveRoom() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error('Cannot leave room - WebSocket is not connected');
+    return;
+  }
+
+  const message = {
+    type: 'leave_room'
+  };
+
+  console.log('Sending leave room message');
+  ws.send(JSON.stringify(message));
+  ws.close();
+} 
