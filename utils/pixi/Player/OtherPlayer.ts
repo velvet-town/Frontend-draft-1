@@ -10,11 +10,19 @@ export class OtherPlayer extends PIXI.Container {
     private lastPosition: { x: number; y: number } = { x: 0, y: 0 };
     private targetPosition: { x: number; y: number } = { x: 0, y: 0 };
     private _wasMoving: boolean = false;
+    private animationState: string = 'idle_down';
+    private direction: string = 'down';
+    private animationSpeed: number = 0.1;
 
     constructor(username: string, skin: string) {
         super();
         this.skin = skin;
-        this.usernameLabel = new PIXI.Text({
+        this.usernameLabel = this.addUsername(username);
+        this.loadAnimations();
+    }
+
+    private addUsername(username: string): PIXI.Text {
+        const text = new PIXI.Text({
             text: username,
             style: {
                 fontFamily: 'silkscreen',
@@ -22,11 +30,11 @@ export class OtherPlayer extends PIXI.Container {
                 fill: 0xFFFFFF,
             }
         });
-        this.usernameLabel.anchor.set(0.5);
-        this.usernameLabel.scale.set(0.07);
-        this.usernameLabel.y = 8;
-        this.addChild(this.usernameLabel);
-        this.loadAnimations();
+        text.anchor.set(0.5);
+        text.scale.set(0.07);
+        text.y = 8;
+        this.addChild(text);
+        return text;
     }
 
     private async loadAnimations() {
@@ -38,7 +46,7 @@ export class OtherPlayer extends PIXI.Container {
         await this.sheet.parse();
         this.animatedSprite = new PIXI.AnimatedSprite(this.sheet.animations['idle_down']);
         this.animatedSprite.anchor.set(0.5, 1);
-        this.animatedSprite.animationSpeed = 0.1;
+        this.animatedSprite.animationSpeed = this.animationSpeed;
         this.animatedSprite.play();
         this.addChildAt(this.animatedSprite, 0);
     }
@@ -49,7 +57,6 @@ export class OtherPlayer extends PIXI.Container {
     }
 
     public update() {
-        // Lerp factor (0.2 = smooth, 1 = instant)
         const lerp = 0.2;
         const prevX = this.x;
         const prevY = this.y;
@@ -59,7 +66,9 @@ export class OtherPlayer extends PIXI.Container {
         // Animation logic
         const dx = this.x - prevX;
         const dy = this.y - prevY;
-        const moved = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
+        const speed = Math.sqrt(dx * dx + dy * dy);
+
+        const moved = speed > 0.5;
         let direction = this.lastDirection;
         if (Math.abs(dx) > Math.abs(dy)) {
             direction = dx > 0 ? 'right' : dx < 0 ? 'left' : this.lastDirection;
@@ -67,19 +76,27 @@ export class OtherPlayer extends PIXI.Container {
             direction = dy > 0 ? 'down' : 'up';
         }
         if (moved !== this._wasMoving || direction !== this.lastDirection) {
-            this.setDirection(direction, moved);
+            this.changeAnimationState(moved ? `walk_${direction}` : `idle_${direction}`);
             this.lastDirection = direction;
             this._wasMoving = moved;
         }
         this.lastPosition = { x: this.x, y: this.y };
     }
 
-    public setDirection(direction: string, moving: boolean) {
-        if (!this.animatedSprite || !this.sheet) return;
-        const anim = moving ? `walk_${direction}` : `idle_${direction}`;
-        if (this.animatedSprite.textures !== this.sheet.animations[anim]) {
-            this.animatedSprite.textures = this.sheet.animations[anim];
+    public changeAnimationState(state: string) {
+        if (this.animationState === state) return;
+        this.animationState = state;
+        if (this.animatedSprite && this.sheet) {
+            this.animatedSprite.textures = this.sheet.animations[state];
             this.animatedSprite.play();
         }
+    }
+
+    public async init() {
+        await this.loadAnimations();
+    }
+
+    public destroy() {
+        // Cleanup if needed
     }
 }
