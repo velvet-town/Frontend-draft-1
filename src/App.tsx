@@ -1,45 +1,46 @@
-import PixiApp from "./components/PixiApp"
-import defaultMap from '../utils/defaultmap.json'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { LoginButton } from './components/LoginButton'
+import { RouterProvider, createRouter, createRootRoute, createRoute, Outlet } from '@tanstack/react-router'
+import { AuthProvider } from './contexts/AuthContext'
+import Home from './Webpages/Home'
+import Game from './components/Game'
 
-const localGameData = {
-  map_data: defaultMap
-}
-
-function GameContent() {
-  const { user } = useAuth()
-  
-  // Use mock user data if not authenticated, otherwise use Supabase user data
-  const userData = user ? {
-    id: user.id,
-    name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous',
-    skin: "004" // You might want to store this in user metadata
-  } : {
-    id: "local-user-1",
-    name: "Guest",
-    skin: "004"
-  }
-
-  return (
-    <div className="fixed inset-0 w-full h-full">
-      <div className="absolute top-4 right-4 z-50">
-        <LoginButton />
-      </div>
-      <PixiApp 
-        realmData={localGameData.map_data} 
-        className='w-full h-full' 
-        username={userData.id}
-        initialSkin={userData.skin} 
-      />
+// Create the root route
+const rootRoute = createRootRoute({
+  component: () => (
+    <div className="min-h-screen">
+      <Outlet />
     </div>
-  )
+  ),
+})
+
+// Create the home route
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: Home,
+})
+
+// Create the game route
+const gameRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/game',
+  component: Game,
+})
+
+// Create the router
+const routeTree = rootRoute.addChildren([homeRoute, gameRoute])
+const router = createRouter({ routeTree })
+
+// Register the router type
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
 }
 
 function App() {
   return (
     <AuthProvider>
-      <GameContent />
+      <RouterProvider router={router} />
     </AuthProvider>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
-import { PlayApp } from "../../utils/pixi/PlayApp";
-import type { RealmData } from "../../utils/pixi/types";
+import { PlayApp } from "./../PIXI/pixi/PlayApp";
+import type { RealmData } from "./../PIXI/pixi/types";
 
 type PixiAppPropa= {
     className?: string
