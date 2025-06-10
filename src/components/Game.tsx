@@ -24,7 +24,8 @@ const Game = () => {
       <PixiApp 
         realmData={defaultMap} 
         className='w-full h-full' 
-        username={userData.id}
+        userId={userData.id}
+        username={userData.name}
         initialSkin={userData.skin} 
       />
     </div>

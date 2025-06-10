@@ -15,7 +15,13 @@ interface WebSocketMessage {
   position?: { x: number; y: number };
 }
 
-let ws: WebSocket | null = null;
+export let ws: WebSocket | null = null;
+const wsListeners: ((event: MessageEvent) => void)[] = [];
+
+export function addWSListener(listener: (event: MessageEvent) => void) {
+    wsListeners.push(listener);
+    if (ws) ws.addEventListener('message', listener);
+}
 
 export async function joinRoom(userId: string): Promise<RoomResponse> {
   if (!userId) throw new Error('User ID is required to join room');
@@ -47,6 +53,12 @@ export async function joinRoom(userId: string): Promise<RoomResponse> {
 
 export function initializeWebSocket(userId: string, onMessage: (data: WebSocketMessage) => void): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      console.log('Using existing WebSocket connection');
+      resolve(ws);
+      return;
+    }
+
     if (ws) {
       console.log('Closing existing WebSocket connection');
       ws.close();
@@ -78,6 +90,9 @@ export function initializeWebSocket(userId: string, onMessage: (data: WebSocketM
       console.log('WebSocket disconnected:', event.code, event.reason);
       ws = null;
     };
+
+    // Attach all registered listeners to the new ws
+    wsListeners.forEach(listener => ws!.addEventListener('message', listener));
   });
 }
 

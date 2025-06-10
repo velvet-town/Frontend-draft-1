@@ -1,15 +1,17 @@
 import { useEffect, useRef } from "react"
 import { PlayApp } from "./../PIXI/pixi/PlayApp";
 import type { RealmData } from "./../PIXI/pixi/types";
+import Chat_Component from '../PIXI/multiplayer/Chat_AudioCalls/Chat_Component'
 
 type PixiAppPropa= {
     className?: string
     realmData: RealmData
+    userId: string
     username: string
     initialSkin: string
 }
 
-const PixiApp:React.FC<PixiAppPropa> = ({ className, realmData, username, initialSkin }) => {
+const PixiApp:React.FC<PixiAppPropa> = ({ className, realmData, userId, username, initialSkin }) => {
 
     const appRef=useRef<PlayApp | null>(null);
 
@@ -32,8 +34,8 @@ const PixiApp:React.FC<PixiAppPropa> = ({ className, realmData, username, initia
         }
     },[])
     return (
-        <div id="app-container" className={`overflow-hidden ${className}`}>
-
+        <div id="app-container" className={`overflow-hidden relative ${className}`}>
+            <Chat_Component userId={userId} username={username} />
         </div>
     )
 }

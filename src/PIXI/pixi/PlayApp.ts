@@ -126,46 +126,6 @@ export class PlayApp extends App {
         ])
     }
 
-    // Comment out backend/socket related methods
-    /*
-    private async syncOtherPlayers() {
-        const {data, error} = await server.getPlayersInRoom(this.currentRoomIndex)
-        if (error) {
-            console.error('Failed to get player positions in room:', error)
-            return
-        }
-
-        for (const player of data.players) {
-            if (player.uid === this.uid) continue
-            this.updatePlayer(player.uid, player)
-        }
-
-        this.sortObjectsByY()
-    }
-    */
-
-    // Keep frontend player management
-    // private async updatePlayer(uid: string, player: any) {
-    //     if (uid in this.players) {
-    //         if (this.players[uid].skin !== player.skin) {
-    //             await this.players[uid].changeSkin(player.skin)
-    //         }
-    //         if (this.players[uid].currentTilePosition.x !== player.x || this.players[uid].currentTilePosition.y !== player.y) {
-    //             this.players[uid].setPosition(player.x, player.y)
-    //         }
-    //     } else {
-    //         await this.spawnPlayer(player.uid, player.skin, player.username, player.x, player.y)
-    //     }
-    // }
-
-    // private async spawnPlayer(uid: string, skin: string, username: string, x: number, y: number) {
-    //     const otherPlayer = new Player(skin, this, username)
-    //     await otherPlayer.init()
-    //     otherPlayer.setPosition(x, y)
-    //     this.layers.object.addChild(otherPlayer.parent)
-    //     this.players[uid] = otherPlayer
-    //     this.sortObjectsByY()
-    // }
 
     public async init() {
         await super.init()
@@ -490,79 +450,12 @@ export class PlayApp extends App {
         this.keysDown = []
     }
 
-    // private onKicked = (message: string) => {
-    //     this.kicked = true
-    //     this.removeEvents()
-    //     signal.emit('showKickedModal', message)
-    // }
-
-    // private onDisconnect = () => {
-    //     this.removeEvents()
-    //     if (!this.kicked) {
-    //         signal.emit('showDisconnectModal')
-    //     }
-    // }
 
     private onMessage = (message: string) => {
         this.player.setMessage(message)
         // server.socket.emit('sendMessage', message)
     }
 
-    // private onReceiveMessage = (data: any) => {
-    //     const player = this.players[data.uid]
-    //     if (player) {
-    //         player.setMessage(data.message)
-    //     }
-    // }
-
-    // Comment out backend-related methods
-    /*
-    private displayInitialChatMessage = async () => {
-        const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
-        let channelName = ''
-
-        signal.emit('newRoomChat', {
-            name: this.realmData.rooms[this.currentRoomIndex].name,
-            channelId: channelName
-        })
-    }
-    */
-
-    // private onProximityUpdate = (data: any) => {
-    //     this.proximityId = data.proximityId
-    //     if (this.proximityId) {
-    //         this.player.checkIfShouldJoinChannel(this.player.currentTilePosition)
-    //     }
-    // }
-
-    // Comment out socket event handlers
-    /*
-    private setUpSocketEvents = () => {
-        server.socket.on('playerLeftRoom', this.onPlayerLeftRoom)
-        server.socket.on('playerJoinedRoom', this.onPlayerJoinedRoom)
-        server.socket.on('playerMoved', this.onPlayerMoved)
-        server.socket.on('playerTeleported', this.onPlayerTeleported)
-        server.socket.on('playerChangedSkin', this.onPlayerChangedSkin)
-        server.socket.on('receiveMessage', this.onReceiveMessage)
-        server.socket.on('disconnect', this.onDisconnect)
-        server.socket.on('kicked', this.onKicked)
-        server.socket.on('proximityUpdate', this.onProximityUpdate)
-    }
-
-    private removeSocketEvents = () => {
-        server.socket.off('playerLeftRoom', this.onPlayerLeftRoom)
-        server.socket.off('playerJoinedRoom', this.onPlayerJoinedRoom)
-        server.socket.off('playerMoved', this.onPlayerMoved)
-        server.socket.off('playerTeleported', this.onPlayerTeleported)
-        server.socket.off('playerChangedSkin', this.onPlayerChangedSkin)
-        server.socket.off('receiveMessage', this.onReceiveMessage)
-        server.socket.off('disconnect', this.onDisconnect)
-        server.socket.off('kicked', this.onKicked)
-        server.socket.off('proximityUpdate', this.onProximityUpdate)
-    }
-    */
 
     private removeEvents = () => {
         // this.removeSocketEvents()
