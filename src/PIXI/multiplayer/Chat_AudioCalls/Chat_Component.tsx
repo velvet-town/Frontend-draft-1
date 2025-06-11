@@ -31,7 +31,6 @@ const Chat_Component: React.FC<Chat_ComponentProps> = ({ userId, username }) => 
     const handleSendMessage = () => {
         if (message.trim() !== "") {
             const newMessage = { text: message, player_id: userId, username }
-            console.log('[Chat Debug] Sending message to server:', newMessage);
             setMessages(prev => [...prev, newMessage])
             chat.send(message, userId, username)
             setMessage("")
