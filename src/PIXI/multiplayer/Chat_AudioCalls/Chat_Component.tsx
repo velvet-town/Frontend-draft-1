@@ -19,10 +19,9 @@ const Chat_Component: React.FC<Chat_ComponentProps> = ({ userId, username }) => 
 
     useEffect(() => {
         chat.onMessage((message) => {
-            console.log('[Chat Debug] Received message from server:', message);
             setMessages(prev => {
                 const updated = [...prev, message];
-                console.log('[Chat Debug] All messages:', updated);
+               
                 return updated;
             });
         })

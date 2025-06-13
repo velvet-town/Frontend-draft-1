@@ -140,6 +140,10 @@ export class PlayApp extends App {
         this.setUpFadeOverlay()
         this.setUpSignalListeners()
 
+        // Add event listeners for leaving the game
+        window.addEventListener('beforeunload', this.handleBeforeUnload)
+        window.addEventListener('popstate', this.handlePopState)
+
         // Initialize WebSocket connection
         this.initializeMultiplayer().catch(error => {
             console.error('WebSocket initialization failed:', error)
@@ -197,27 +201,11 @@ export class PlayApp extends App {
     }
 
     private handleBeforeUnload = () => {
-        this.cleanupConnection();
+        leaveRoom();
     }
 
     private handlePopState = () => {
-        this.cleanupConnection();
-    }
-
-    private cleanupConnection = () => {
-        if (this.player) {
-            console.log('Cleaning up connection...');
-            // Clear position update interval
-            if (this.positionUpdateInterval) {
-                clearInterval(this.positionUpdateInterval);
-                this.positionUpdateInterval = null;
-            }
-            // Remove event listeners
-            window.removeEventListener('beforeunload', this.handleBeforeUnload);
-            window.removeEventListener('popstate', this.handlePopState);
-            // Leave room
-            leaveRoom();
-        }
+        leaveRoom();
     }
 
     private async updatePlayer(playerId: string, position: { x: number; y: number }) {
@@ -391,45 +379,6 @@ export class PlayApp extends App {
         this.player.destroy()
     }
 
-    // private onPlayerLeftRoom = (uid: string) => {
-    //     if (this.players[uid]) {
-    //         this.players[uid].destroy()
-    //         this.layers.object.removeChild(this.players[uid].parent)
-    //         delete this.players[uid]
-    //     }
-    // }
-
-    // private onPlayerJoinedRoom = (playerData: any) => {
-    //     this.updatePlayer(playerData.uid, playerData)
-    // }
-
-    // private onPlayerMoved = (data: any) => {
-    //     if (this.blocked.has(`${data.x}, ${data.y}`)) return
-
-    //     const player = this.players[data.uid]
-    //     if (player) {
-    //         player.moveToTile(data.x, data.y)
-    //     }
-    // }
-
-    // private onPlayerTeleported = (data: any) => {
-    //     const player = this.players[data.uid]
-    //     if (player) {
-    //         player.setPosition(data.x, data.y)
-    //     }
-    // }
-
-    // private onPlayerChangedSkin = (data: any) => {
-    //     const player = this.players[data.uid]
-    //     if (player) {
-    //         player.changeSkin(data.skin)
-    //     }
-    //     signal.emit('video-skin', {
-    //         skin: data.skin,
-    //         uid: data.uid,
-    //     })
-    // }
-
     private setUpSignalListeners = () => {
         signal.on('requestSkin', this.onRequestSkin)
         signal.on('switchSkin', this.onSwitchSkin)
@@ -490,8 +439,15 @@ export class PlayApp extends App {
     }
 
     public destroy() {
+        // Remove event listeners
+        window.removeEventListener('beforeunload', this.handleBeforeUnload)
+        window.removeEventListener('popstate', this.handlePopState)
         console.log('Cleaning up PlayApp...');
-        this.cleanupConnection();
+        // Clear position update interval
+        if (this.positionUpdateInterval) {
+            clearInterval(this.positionUpdateInterval);
+            this.positionUpdateInterval = null;
+        }
         this.removeEvents()
         super.destroy()
     }
