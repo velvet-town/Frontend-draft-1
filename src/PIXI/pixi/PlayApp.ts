@@ -5,7 +5,7 @@ import * as PIXI from 'pixi.js'
 import { defaultSkin } from './Player/skins'
 import signal from '../signal'
 import { gsap } from 'gsap'
-import { initializeWebSocket, updatePlayerPosition } from '../multiplayer/API_CALLS/Player_Calls'
+import { initializeWebSocket, updatePlayerPosition, leaveRoom } from '../multiplayer/API_CALLS/Player_Calls'
 import { OtherPlayer } from './Player/OtherPlayer'
 import { joinRoom } from '../multiplayer/API_CALLS/Player_Calls'
 
@@ -196,6 +196,29 @@ export class PlayApp extends App {
         }
     }
 
+    private handleBeforeUnload = () => {
+        this.cleanupConnection();
+    }
+
+    private handlePopState = () => {
+        this.cleanupConnection();
+    }
+
+    private cleanupConnection = () => {
+        if (this.player) {
+            console.log('Cleaning up connection...');
+            // Clear position update interval
+            if (this.positionUpdateInterval) {
+                clearInterval(this.positionUpdateInterval);
+                this.positionUpdateInterval = null;
+            }
+            // Remove event listeners
+            window.removeEventListener('beforeunload', this.handleBeforeUnload);
+            window.removeEventListener('popstate', this.handlePopState);
+            // Leave room
+            leaveRoom();
+        }
+    }
 
     private async updatePlayer(playerId: string, position: { x: number; y: number }) {
         if (this.players[playerId]) {
@@ -468,15 +491,6 @@ export class PlayApp extends App {
 
     public destroy() {
         console.log('Cleaning up PlayApp...');
-        // Remove navigation event listeners
-        window.removeEventListener('beforeunload', this.handleBeforeUnload);
-        window.removeEventListener('popstate', this.handlePopState);
-        
-        // Clear position update interval
-        if (this.positionUpdateInterval) {
-            clearInterval(this.positionUpdateInterval);
-            this.positionUpdateInterval = null;
-        }
         this.cleanupConnection();
         this.removeEvents()
         super.destroy()
