@@ -1,5 +1,4 @@
 import { RouterProvider, createRouter, createRootRoute, createRoute, Outlet } from '@tanstack/react-router'
-import { AuthProvider } from './contexts/AuthContext'
 import Home from './Webpages/Home'
 import Game from './components/Game'
 
@@ -19,15 +18,15 @@ const homeRoute = createRoute({
   component: Home,
 })
 
-// Create the game route
-const gameRoute = createRoute({
+// Create the room route
+const roomRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/game',
+  path: '/room/$roomId',
   component: Game,
 })
 
 // Create the router
-const routeTree = rootRoute.addChildren([homeRoute, gameRoute])
+const routeTree = rootRoute.addChildren([homeRoute, roomRoute])
 const router = createRouter({ routeTree })
 
 // Register the router type
@@ -38,11 +37,7 @@ declare module '@tanstack/react-router' {
 }
 
 function App() {
-  return (
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App

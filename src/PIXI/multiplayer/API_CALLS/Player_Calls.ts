@@ -119,10 +119,10 @@ export function leaveRoom() {
   try {
     // Send leave room message if WebSocket is still open
     if (ws.readyState === WebSocket.OPEN) {
-      const message = {
-        type: 'leave_room'
-      };
-      console.log('Sending leave room message');
+  const message = {
+    type: 'leave_room'
+  };
+  console.log('Sending leave room message');
       
       // Use a Promise to ensure the message is sent before closing
       const sendMessage = new Promise<void>((resolve) => {
@@ -147,7 +147,7 @@ export function leaveRoom() {
       });
     } else {
       // If WebSocket is not open, just clean up
-      ws.close();
+  ws.close();
       ws = null;
       wsListeners.length = 0;
     }

@@ -2,14 +2,12 @@ import { App } from './App'
 import { Player } from './Player/Player'
 import type { Point, RealmData, SpriteMap, TilePoint } from './types'
 import * as PIXI from 'pixi.js'
-//import { server } from '../backend/server'
 import { defaultSkin } from './Player/skins'
 import signal from '../signal'
-// import { createClient } from '../supabase/client'
 import { gsap } from 'gsap'
-import { joinRoom, initializeWebSocket, updatePlayerPosition, leaveRoom } from '../multiplayer/API_CALLS/Player_Calls'
+import { initializeWebSocket, updatePlayerPosition } from '../multiplayer/API_CALLS/Player_Calls'
 import { OtherPlayer } from './Player/OtherPlayer'
-import { toast } from 'react-toastify'
+import { joinRoom } from '../multiplayer/API_CALLS/Player_Calls'
 
 declare global {
     interface WebSocketMessage {
@@ -142,9 +140,9 @@ export class PlayApp extends App {
         this.setUpFadeOverlay()
         this.setUpSignalListeners()
 
-        // Initialize multiplayer in the background
+        // Initialize WebSocket connection
         this.initializeMultiplayer().catch(error => {
-            console.error('Multiplayer initialization failed:', error)
+            console.error('WebSocket initialization failed:', error)
         })
 
         this.fadeOut()
@@ -157,19 +155,20 @@ export class PlayApp extends App {
     private async initializeMultiplayer() {
         try {
             const roomData = await joinRoom(this.player.username);
-            await this.updateOtherPlayers(roomData.players);
+            
+            // Initialize other players from room data
+            if (roomData.players) {
+                for (const player of roomData.players) {
+                    if (player.id !== this.player.username) {
+                        await this.spawnPlayer(player.id, player.position);
+                    }
+                }
+            }
 
             // Start position update interval
             this.startPositionUpdates();
 
-            // Add navigation event handlers
-            window.addEventListener('beforeunload', this.handleBeforeUnload);
-            window.addEventListener('popstate', this.handlePopState);
-
             await initializeWebSocket(this.player.username, (data) => {
-                if (data.type === 'player_joined') {
-                    console.log('[WebSocket] player_joined:', data.player_id, data.position);
-                }
                 switch (data.type) {
                     case 'position_update':
                         if (data.player_id && data.position) {
@@ -187,8 +186,6 @@ export class PlayApp extends App {
                                 this.players[data.player_id].destroy();
                                 delete this.players[data.player_id];
                                 console.log('[player_left] Removed:', data.player_id, 'Now:', Object.keys(this.players));
-                            } else {
-                                console.log('[player_left] Player not found:', data.player_id);
                             }
                         }
                         break;
@@ -199,48 +196,6 @@ export class PlayApp extends App {
         }
     }
 
-    private handleBeforeUnload = () => {
-        this.cleanupConnection();
-    }
-
-    private handlePopState = () => {
-        this.cleanupConnection();
-    }
-
-    private cleanupConnection = () => {
-        if (this.player) {
-            console.log('Cleaning up connection due to navigation...');
-            leaveRoom();
-        }
-    }
-
-    private async updateOtherPlayers(players: Array<{ id: string; position: { x: number; y: number } }>) {
-        console.log('[updateOtherPlayers] players:', players);
-        const newIds = players.map(p => p.id);
-        const currentIds = Object.keys(this.players);
-
-        // Remove players not in the new array
-        for (const id of currentIds) {
-            if (!newIds.includes(id)) {
-                this.players[id].destroy();
-                delete this.players[id];
-                console.log('[updateOtherPlayers] Removed player:', id);
-            }
-        }
-
-        // Add or update players from new array
-        for (const player of players) {
-            if (player.id !== this.player.username) {
-                if (!this.players[player.id]) {
-                    await this.spawnPlayer(player.id, player.position);
-                    console.log('[updateOtherPlayers] Added player:', player.id);
-                } else {
-                    this.players[player.id].setPosition(player.position.x, player.position.y);
-                    // Optionally log update
-                }
-            }
-        }
-    }
 
     private async updatePlayer(playerId: string, position: { x: number; y: number }) {
         if (this.players[playerId]) {
