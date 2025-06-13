@@ -9,6 +9,7 @@ import signal from '../signal'
 import { gsap } from 'gsap'
 import { joinRoom, initializeWebSocket, updatePlayerPosition, leaveRoom } from '../multiplayer/API_CALLS/Player_Calls'
 import { OtherPlayer } from './Player/OtherPlayer'
+import { toast } from 'react-toastify'
 
 declare global {
     interface WebSocketMessage {
@@ -161,6 +162,10 @@ export class PlayApp extends App {
             // Start position update interval
             this.startPositionUpdates();
 
+            // Add navigation event handlers
+            window.addEventListener('beforeunload', this.handleBeforeUnload);
+            window.addEventListener('popstate', this.handlePopState);
+
             await initializeWebSocket(this.player.username, (data) => {
                 if (data.type === 'player_joined') {
                     console.log('[WebSocket] player_joined:', data.player_id, data.position);
@@ -181,6 +186,9 @@ export class PlayApp extends App {
                             if (this.players[data.player_id]) {
                                 this.players[data.player_id].destroy();
                                 delete this.players[data.player_id];
+                                console.log('[player_left] Removed:', data.player_id, 'Now:', Object.keys(this.players));
+                            } else {
+                                console.log('[player_left] Player not found:', data.player_id);
                             }
                         }
                         break;
@@ -191,11 +199,45 @@ export class PlayApp extends App {
         }
     }
 
+    private handleBeforeUnload = () => {
+        this.cleanupConnection();
+    }
+
+    private handlePopState = () => {
+        this.cleanupConnection();
+    }
+
+    private cleanupConnection = () => {
+        if (this.player) {
+            console.log('Cleaning up connection due to navigation...');
+            leaveRoom();
+        }
+    }
+
     private async updateOtherPlayers(players: Array<{ id: string; position: { x: number; y: number } }>) {
         console.log('[updateOtherPlayers] players:', players);
+        const newIds = players.map(p => p.id);
+        const currentIds = Object.keys(this.players);
+
+        // Remove players not in the new array
+        for (const id of currentIds) {
+            if (!newIds.includes(id)) {
+                this.players[id].destroy();
+                delete this.players[id];
+                console.log('[updateOtherPlayers] Removed player:', id);
+            }
+        }
+
+        // Add or update players from new array
         for (const player of players) {
             if (player.id !== this.player.username) {
-                await this.updatePlayer(player.id, player.position);
+                if (!this.players[player.id]) {
+                    await this.spawnPlayer(player.id, player.position);
+                    console.log('[updateOtherPlayers] Added player:', player.id);
+                } else {
+                    this.players[player.id].setPosition(player.position.x, player.position.y);
+                    // Optionally log update
+                }
             }
         }
     }
@@ -471,12 +513,16 @@ export class PlayApp extends App {
 
     public destroy() {
         console.log('Cleaning up PlayApp...');
+        // Remove navigation event listeners
+        window.removeEventListener('beforeunload', this.handleBeforeUnload);
+        window.removeEventListener('popstate', this.handlePopState);
+        
         // Clear position update interval
         if (this.positionUpdateInterval) {
             clearInterval(this.positionUpdateInterval);
             this.positionUpdateInterval = null;
         }
-        leaveRoom();
+        this.cleanupConnection();
         this.removeEvents()
         super.destroy()
     }

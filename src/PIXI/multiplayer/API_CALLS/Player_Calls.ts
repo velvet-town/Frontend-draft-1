@@ -111,16 +111,47 @@ export function updatePlayerPosition(position: { x: number; y: number }) {
 }
 
 export function leaveRoom() {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
+  if (!ws) {
     console.error('Cannot leave room - WebSocket is not connected');
     return;
   }
 
-  const message = {
-    type: 'leave_room'
-  };
+  try {
+    // Send leave room message if WebSocket is still open
+    if (ws.readyState === WebSocket.OPEN) {
+      const message = {
+        type: 'leave_room'
+      };
+      console.log('Sending leave room message');
+      
+      // Use a Promise to ensure the message is sent before closing
+      const sendMessage = new Promise<void>((resolve) => {
+        ws!.send(JSON.stringify(message));
+        // Give a small delay to ensure the message is sent
+        setTimeout(resolve, 100);
+      });
 
-  console.log('Sending leave room message');
-  ws.send(JSON.stringify(message));
-  ws.close();
+      // Wait for the message to be sent before closing
+      sendMessage.then(() => {
+        // Close WebSocket connection
+        ws!.close();
+        ws = null;
+        
+        // Clear all WebSocket listeners
+        wsListeners.forEach(listener => {
+          if (ws) {
+            ws.removeEventListener('message', listener);
+          }
+        });
+        wsListeners.length = 0;
+      });
+    } else {
+      // If WebSocket is not open, just clean up
+      ws.close();
+      ws = null;
+      wsListeners.length = 0;
+    }
+  } catch (error) {
+    console.error('Error while leaving room:', error);
+  }
 } 

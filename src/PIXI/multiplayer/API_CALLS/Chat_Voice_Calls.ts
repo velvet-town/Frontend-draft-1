@@ -23,22 +23,22 @@ addWSListener((event) => {
 
 export const chat = {
     send: (text: string, userId: string, username: string) => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            console.error('Cannot send chat message - WebSocket is not connected');
-            return;
-        }
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.error('Cannot send chat message - WebSocket is not connected');
+        return;
+    }
 
         const message: ChatMessage = {
-            type: 'chat_message',
+        type: 'chat_message',
             text,
             player_id: userId,
             username
-        };
+    };
         console.log('[Chat Debug] WebSocket sending:', message);
-        ws.send(JSON.stringify(message));
+    ws.send(JSON.stringify(message));
     },
 
     onMessage: (callback: (message: ChatMessage) => void) => {
         messageCallback = callback;
-    }
-};
+        }
+    };
