@@ -2,12 +2,14 @@ import { useNavigate } from '@tanstack/react-router'
 import { useAuthStore } from '../Zustad_Store/Auth_Store'
 import { joinRoom } from '../PIXI/multiplayer/API_CALLS/Player_Calls'
 import { useState } from 'react'
+import Take_User_data from '../components/Take_User_data'
 
 const Home = () => {
   const navigate = useNavigate()
-  const { user, signInWithGoogle, signOut } = useAuthStore()
+  const { user, signInWithGoogle, signOut, userExists } = useAuthStore()
   const [isJoining, setIsJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showUserDataModal, setShowUserDataModal] = useState(true)
 
   const handleSignOut = async () => {
     await signOut()
@@ -40,6 +42,9 @@ const Home = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-[#2d0036] via-[#4b005c] to-[#1a0021] relative">
+      {userExists === false && (
+        <Take_User_data open={showUserDataModal} onClose={() => setShowUserDataModal(false)} />
+      )}
       {user && (
         <button
           onClick={handleSignOut}
