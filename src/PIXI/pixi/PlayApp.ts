@@ -220,7 +220,7 @@ export class PlayApp extends App {
     private async spawnPlayer(playerId: string, position: { x: number; y: number }) {
         // Use a default skin or pass the correct skin if available
         const skin = '009'; // Or get from player data if available
-        const otherPlayer = new OtherPlayer(playerId, skin);
+        const otherPlayer = new OtherPlayer(skin);
         otherPlayer.setPosition(position.x, position.y);
         this.layers.object.addChild(otherPlayer);
         this.players[playerId] = otherPlayer;

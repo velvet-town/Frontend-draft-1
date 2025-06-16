@@ -3,39 +3,25 @@ import playerSpriteSheetData from './PlayerSpriteSheetData';
 
 export class OtherPlayer extends PIXI.Container {
     private animatedSprite: PIXI.AnimatedSprite | null = null;
-    private usernameLabel: PIXI.Text;
+    // private usernameLabel: PIXI.Text;
     private lastDirection: string = 'down';
     public skin: string;
     private sheet: PIXI.Spritesheet | null = null;
-    private lastPosition: { x: number; y: number } = { x: 0, y: 0 };
+    // private lastPosition: { x: number; y: number } = { x: 0, y: 0 };
     private targetPosition: { x: number; y: number } = { x: 0, y: 0 };
     private _wasMoving: boolean = false;
     private animationState: string = 'idle_down';
-    private direction: string = 'down';
+    // private direction: string = 'down';
     private animationSpeed: number = 0.1;
 
-    constructor(username: string, skin: string) {
+    constructor( skin: string) {
         super();
         this.skin = skin;
-        this.usernameLabel = this.addUsername(username);
+        // this.usernameLabel = this.addUsername(username);
         this.loadAnimations();
     }
 
-    private addUsername(username: string): PIXI.Text {
-        const text = new PIXI.Text({
-            text: username,
-            style: {
-                fontFamily: 'silkscreen',
-                fontSize: 128,
-                fill: 0xFFFFFF,
-            }
-        });
-        text.anchor.set(0.5);
-        text.scale.set(0.07);
-        text.y = 8;
-        this.addChild(text);
-        return text;
-    }
+    
 
     private async loadAnimations() {
         const src = `/sprites/characters/Character_${this.skin}.png`;
@@ -80,7 +66,7 @@ export class OtherPlayer extends PIXI.Container {
             this.lastDirection = direction;
             this._wasMoving = moved;
         }
-        this.lastPosition = { x: this.x, y: this.y };
+        // this.lastPosition = { x: this.x, y: this.y };
     }
 
     public changeAnimationState(state: string) {
