@@ -9,6 +9,7 @@ interface User {
   picture?: string;     // Google profile picture (from Google and DB)
   gender?: string;      // From DB
   profile_pic?: string; // From DB (could be same as picture)
+  lastRoom?: string;    // Last room visited from DB
 }
 
 interface AuthState {
@@ -42,6 +43,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
             picture: backendUser.profile_pic,
             gender: backendUser.gender,
             profile_pic: backendUser.profile_pic,
+            lastRoom: backendUser.last_room,
           },
           loading: false,
         });
@@ -124,6 +126,7 @@ export async function fetchUserProfile(userId: string): Promise<{
   gender: string;
   email: string;
   profile_pic: string;
+  last_room: string;
 }> {
   const res = await fetch(`${BACKEND_HTTP_URL}/auth/get-user`, {
     method: 'POST',

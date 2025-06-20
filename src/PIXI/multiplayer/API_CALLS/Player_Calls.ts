@@ -51,6 +51,44 @@ export async function joinRoom(userId: string): Promise<RoomResponse> {
   }
 }
 
+export async function joinSpecificRoom(userId: string, roomId: string): Promise<RoomResponse> {
+  if (!userId) throw new Error('User ID is required to join room');
+  if (!roomId) throw new Error('Room ID is required to join specific room');
+  
+  console.log('Attempting to join specific room for user:', userId, 'room:', roomId);
+  try {
+    const response = await fetch(BACKEND_HTTP_URL + ENDPOINTS.JOIN_SPECIFIC_ROOM, {
+      method: 'POST',
+      headers: {
+        'Authorization': userId,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ room_id: roomId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Failed to join specific room:', error);
+      
+      // Provide user-friendly error messages
+      if (error.includes('is full')) {
+        throw new Error(`Room ${roomId} is full (max 20 players)`);
+      } else if (error.includes('too long')) {
+        throw new Error(`Invalid room ID: ${error}`);
+      } else {
+        throw new Error(`Failed to join room ${roomId}: ${error}`);
+      }
+    }
+
+    const roomData = await response.json();
+    console.log('Successfully joined specific room:', roomData);
+    return roomData;
+  } catch (e) {
+    console.error('Error joining specific room:', e);
+    throw e;
+  }
+}
+
 export function initializeWebSocket(userId: string, onMessage: (data: WebSocketMessage) => void): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
