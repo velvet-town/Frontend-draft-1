@@ -245,21 +245,13 @@ export class Player {
                 const movementInput = this.getMovementInput()
                 const newTilePosition = { x: this.currentTilePosition.x + movementInput.x, y: this.currentTilePosition.y + movementInput.y }
 
-                // Teleport
-                const teleported = this.teleportIfOnTeleporter('keyboard')
-                if (teleported) {
-                    this.stop()
-                    return
-                }
 
                 if ((movementInput.x !== 0 || movementInput.y !== 0) && !this.playApp.blocked.has(`${newTilePosition.x}, ${newTilePosition.y}`)) {
                     this.moveToTile(newTilePosition.x, newTilePosition.y)
                 } else {
                     this.stop()
 
-                    // Teleport
-                    const teleported = this.teleportIfOnTeleporter('mouse')
-                    if (teleported) return
+                  
                 }
             }
         } else {
@@ -331,14 +323,6 @@ export class Player {
                 }
             }, 100)
         }
-    }
-
-    private teleportIfOnTeleporter = (movementMode: 'keyboard' | 'mouse') => {
-        if (this.isLocal && this.movementMode === movementMode) {
-            const teleported = this.playApp.teleportIfOnTeleportSquare(this.currentTilePosition.x, this.currentTilePosition.y)
-            return teleported
-        }
-        return false
     }
 
     public changeAnimationState = (state: AnimationState, force: boolean = false) => {

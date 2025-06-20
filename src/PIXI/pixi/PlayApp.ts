@@ -1,4 +1,4 @@
-import { App } from './App'
+import { App } from './MapGenerator'
 import { Player } from './Player/Player'
 import type { Point, RealmData, SpriteMap, TilePoint } from './types'
 import * as PIXI from 'pixi.js'
@@ -218,6 +218,7 @@ export class PlayApp extends App {
     }
 
     private async spawnPlayer(playerId: string, position: { x: number; y: number }) {
+
         const skin = '009'; // Or get from player data if available
         const otherPlayer = new OtherPlayer(skin);
         otherPlayer.setPosition(position.x, position.y);
