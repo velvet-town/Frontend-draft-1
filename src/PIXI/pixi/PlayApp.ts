@@ -9,10 +9,11 @@ import { initializeWebSocket, updatePlayerPosition, leaveRoom } from '../multipl
 import { OtherPlayer } from './Player/OtherPlayer'
 import { joinRoom } from '../multiplayer/API_CALLS/Player_Calls'
 
-declare global {
-    interface WebSocketMessage {
-        player_id?: string;
-    }
+interface WebSocketMessage {
+    type: string;
+    player_id?: string;
+    position?: { x: number; y: number };
+    username?: string;
 }
 
 export class PlayApp extends App {
@@ -164,7 +165,7 @@ export class PlayApp extends App {
             if (roomData.players) {
                 for (const player of roomData.players) {
                     if (player.id !== this.player.username) {
-                        await this.spawnPlayer(player.id, player.position);
+                        await this.spawnPlayer(player.id, player.position, player.id);
                     }
                 }
             }
@@ -172,16 +173,16 @@ export class PlayApp extends App {
             // Start position update interval
             this.startPositionUpdates();
 
-            await initializeWebSocket(this.player.username, (data) => {
+            await initializeWebSocket(this.player.username, (data: any) => {
                 switch (data.type) {
                     case 'position_update':
                         if (data.player_id && data.position) {
-                            this.updatePlayer(data.player_id, data.position);
+                            this.updatePlayer(data.player_id, data.position, data.username);
                         }
                         break;
                     case 'player_joined':
                         if (data.player_id && data.position) {
-                            this.updatePlayer(data.player_id, data.position);
+                            this.updatePlayer(data.player_id, data.position, data.username);
                         }
                         break;
                     case 'player_left':
@@ -208,19 +209,23 @@ export class PlayApp extends App {
         leaveRoom();
     }
 
-    private async updatePlayer(playerId: string, position: { x: number; y: number }) {
+    private async updatePlayer(playerId: string, position: { x: number; y: number }, username?: string) {
         if (this.players[playerId]) {
             this.players[playerId].setPosition(position.x, position.y);
+            // Update username if provided
+            if (username && this.players[playerId].username !== username) {
+                this.players[playerId].updateUsername(username);
+            }
         } else {
             console.log('[updatePlayer] Player not found, spawning:', playerId, position);
-            await this.spawnPlayer(playerId, position);
+            await this.spawnPlayer(playerId, position, username);
         }
     }
 
-    private async spawnPlayer(playerId: string, position: { x: number; y: number }) {
+    private async spawnPlayer(playerId: string, position: { x: number; y: number }, username?: string) {
 
         const skin = '009'; // Or get from player data if available
-        const otherPlayer = new OtherPlayer(skin);
+        const otherPlayer = new OtherPlayer(skin, username || playerId);
         otherPlayer.setPosition(position.x, position.y);
         this.layers.object.addChild(otherPlayer);
         this.players[playerId] = otherPlayer;
@@ -462,7 +467,7 @@ export class PlayApp extends App {
             this.player.setMovementMode('keyboard');
             
             const position = { x: tileX * 32, y: tileY * 32 };
-            updatePlayerPosition(position);
+            updatePlayerPosition(position, this.player.username);
         }
     }
 
@@ -489,7 +494,7 @@ export class PlayApp extends App {
                 this.lastSentPosition.x !== currentPosition.x || 
                 this.lastSentPosition.y !== currentPosition.y) {
                
-                updatePlayerPosition(currentPosition);
+                updatePlayerPosition(currentPosition, this.player.username);
                 this.lastSentPosition = currentPosition;
             }
         }, 100);

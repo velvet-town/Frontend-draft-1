@@ -110,13 +110,13 @@ export class Player {
         const text = new PIXI.Text({
             text: this.username,
             style: {
-                fontFamily: 'silkscreen',
-                fontSize: 128,
+                fontFamily: 'nunito',
+                fontSize: 9,
                 fill: 0xFFFFFF,
+                fontWeight: '100',
             }
         });
         text.anchor.set(0.5);
-        text.scale.set(0.07);
         text.y = 8;
         this.parent.addChild(text);
     }
