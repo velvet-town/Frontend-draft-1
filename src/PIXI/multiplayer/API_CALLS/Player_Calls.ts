@@ -13,6 +13,7 @@ interface WebSocketMessage {
   playerId?: string;
   player_id?: string;
   position?: { x: number; y: number };
+  username?: string;
 }
 
 export let ws: WebSocket | null = null;
@@ -134,7 +135,7 @@ export function initializeWebSocket(userId: string, onMessage: (data: WebSocketM
   });
 }
 
-export function updatePlayerPosition(position: { x: number; y: number }) {
+export function updatePlayerPosition(position: { x: number; y: number }, username?: string) {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     console.error('Cannot send position update - WebSocket is not connected');
     return;
@@ -142,7 +143,8 @@ export function updatePlayerPosition(position: { x: number; y: number }) {
 
   const message = {
     type: 'position_update',
-    position: position
+    position: position,
+    username: username
   };
 
   ws.send(JSON.stringify(message));

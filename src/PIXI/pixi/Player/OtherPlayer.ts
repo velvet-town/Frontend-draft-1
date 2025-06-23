@@ -3,21 +3,20 @@ import playerSpriteSheetData from './PlayerSpriteSheetData';
 
 export class OtherPlayer extends PIXI.Container {
     private animatedSprite: PIXI.AnimatedSprite | null = null;
-    // private usernameLabel: PIXI.Text;
+    private usernameLabel: PIXI.Text | null = null;
     private lastDirection: string = 'down';
     public skin: string;
+    public username: string;
     private sheet: PIXI.Spritesheet | null = null;
-    // private lastPosition: { x: number; y: number } = { x: 0, y: 0 };
     private targetPosition: { x: number; y: number } = { x: 0, y: 0 };
     private _wasMoving: boolean = false;
     private animationState: string = 'idle_down';
-    // private direction: string = 'down';
     private animationSpeed: number = 0.1;
 
-    constructor( skin: string) {
+    constructor(skin: string, username: string = '') {
         super();
         this.skin = skin;
-        // this.usernameLabel = this.addUsername(username);
+        this.username = username;
         this.loadAnimations();
     }
 
@@ -35,6 +34,30 @@ export class OtherPlayer extends PIXI.Container {
         this.animatedSprite.animationSpeed = this.animationSpeed;
         this.animatedSprite.play();
         this.addChildAt(this.animatedSprite, 0);
+        
+        // Add username label after sprite is loaded
+        if (this.username) {
+            this.addUsername();
+        }
+    }
+
+    private addUsername() {
+        if (this.usernameLabel) {
+            this.removeChild(this.usernameLabel);
+        }
+        
+        this.usernameLabel = new PIXI.Text({
+            text: this.username,
+            style: {
+                fontFamily: 'nunito',
+                fontSize: 9,
+                fill: 0xFFFFFF,
+                fontWeight: '100',
+            }
+        });
+        this.usernameLabel.anchor.set(0.5);
+        this.usernameLabel.y = 8;
+        this.addChild(this.usernameLabel);
     }
 
     public setPosition(x: number, y: number) {
@@ -78,11 +101,24 @@ export class OtherPlayer extends PIXI.Container {
         }
     }
 
+    public updateUsername(newUsername: string) {
+        this.username = newUsername;
+        if (this.usernameLabel) {
+            this.usernameLabel.text = newUsername;
+        } else if (newUsername) {
+            this.addUsername();
+        }
+    }
+
     public async init() {
         await this.loadAnimations();
     }
 
     public destroy() {
-        // Cleanup if needed
+        if (this.usernameLabel) {
+            this.removeChild(this.usernameLabel);
+            this.usernameLabel = null;
+        }
+        super.destroy();
     }
 }
