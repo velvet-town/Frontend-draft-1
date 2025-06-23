@@ -59,7 +59,7 @@ export class Player {
     private targetPosition: { x: number, y: number } | null = null
     private path: Coordinate[] = []
     private pathIndex: number = 0
-    private sheet: any = null
+    private sheet: PIXI.Spritesheet | null = null
     private movementMode: 'keyboard' | 'mouse' = 'mouse'
     public frozen: boolean = false
     private initialized: boolean = false
@@ -277,7 +277,8 @@ export class Player {
             this.changeAnimationState(`walk_${this.direction}` as AnimationState)
         }
 
-        this.playApp.sortObjectsByY()
+        // 🚀 Mark sorting as dirty instead of sorting every frame
+        this.playApp.markSortingDirty()
 
         if (this.isLocal) {
             this.playApp.moveCameraToPlayer()
@@ -330,8 +331,10 @@ export class Player {
 
         this.animationState = state
         const animatedSprite = this.parent.children[0] as PIXI.AnimatedSprite
-        animatedSprite.textures = this.sheet.animations[state]
-        animatedSprite.play()
+        if (this.sheet && this.sheet.animations[state]) {
+            animatedSprite.textures = this.sheet.animations[state]
+            animatedSprite.play()
+        }
     }
 
     public keydown = (event: KeyboardEvent) => {

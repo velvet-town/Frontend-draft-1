@@ -9,12 +9,8 @@ import { initializeWebSocket, updatePlayerPosition, leaveRoom } from '../multipl
 import { OtherPlayer } from './Player/OtherPlayer'
 import { joinRoom } from '../multiplayer/API_CALLS/Player_Calls'
 
-interface WebSocketMessage {
-    type: string;
-    player_id?: string;
-    position?: { x: number; y: number };
-    username?: string;
-}
+// 🎯 Frustum Culling Configuration
+const CULLING_MARGIN = 100; // Extra pixels around viewport for smooth transitions
 
 export class PlayApp extends App {
     private scale: number = 1.5
@@ -40,6 +36,12 @@ export class PlayApp extends App {
     private positionUpdateInterval: number | null = null;
     private lastSentPosition: { x: number; y: number } | null = null;
 
+    // 🎯 Frustum Culling Properties
+    private cullableObjects: Set<PIXI.Container> = new Set();
+    private lastCameraPosition: { x: number; y: number } = { x: 0, y: 0 };
+    private cullingUpdateThrottle: number = 0;
+    private readonly CULLING_UPDATE_FREQUENCY = 3; // Update culling every 3 frames
+
     constructor(realmData: RealmData, username: string, skin: string = defaultSkin) {
         super(realmData)
         //this.uid = uid
@@ -49,12 +51,119 @@ export class PlayApp extends App {
 
     override async loadRoom(index: number) {
         this.players = {}
+        
+        // 🎯 Set up tile callback before loading room
+        this.setOnTileAddedCallback((sprite: PIXI.Container) => {
+            this.addToCullingSystem(sprite);
+        });
+        
         await super.loadRoom(index)
         this.setUpBlockedTiles()
         this.setUpFadeTiles()
         this.spawnLocalPlayer()
+        
+        // 🎯 Initialize frustum culling for this room
+        this.initializeFrustumCulling()
         //await this.syncOtherPlayers()
         // this.displayInitialChatMessage()
+    }
+
+    // 🎯 Initialize Frustum Culling System
+    private initializeFrustumCulling() {
+        this.cullableObjects.clear()
+        
+        // Add all tiles to culling system
+        this.layers.floor.children.forEach(child => this.cullableObjects.add(child as PIXI.Container))
+        this.layers.above_floor.children.forEach(child => this.cullableObjects.add(child as PIXI.Container))
+        this.layers.object.children.forEach(child => this.cullableObjects.add(child as PIXI.Container))
+        
+        // Add fade tiles
+        this.fadeTileContainer.children.forEach(child => this.cullableObjects.add(child as PIXI.Container))
+        
+        console.log(`🎯 Frustum culling initialized for ${this.cullableObjects.size} objects`)
+    }
+
+    // 🎯 Add Object to Culling System
+    public addToCullingSystem(object: PIXI.Container) {
+        this.cullableObjects.add(object)
+    }
+
+    // 🎯 Remove Object from Culling System
+    public removeFromCullingSystem(object: PIXI.Container) {
+        this.cullableObjects.delete(object)
+    }
+
+    // 🎯 Calculate Viewport Bounds
+    private getViewportBounds() {
+        const camera = this.app.stage.pivot
+        const scale = this.scale
+        const screenWidth = this.app.screen.width / scale
+        const screenHeight = this.app.screen.height / scale
+        
+        return {
+            left: camera.x - CULLING_MARGIN,
+            right: camera.x + screenWidth + CULLING_MARGIN,
+            top: camera.y - CULLING_MARGIN,
+            bottom: camera.y + screenHeight + CULLING_MARGIN
+        }
+    }
+
+    // 🎯 Check if Object is in Viewport
+    private isObjectInViewport(object: PIXI.Container, bounds: { left: number; right: number; top: number; bottom: number }): boolean {
+        const objectBounds = object.getBounds()
+        
+        return !(objectBounds.right < bounds.left || 
+                objectBounds.left > bounds.right || 
+                objectBounds.bottom < bounds.top || 
+                objectBounds.top > bounds.bottom)
+    }
+
+    // 🎯 Update Frustum Culling (Throttled) - TEMPORARILY DISABLED
+    private updateFrustumCulling() {
+        // 🚨 TEMPORARY FIX: Disable culling to fix black area issue
+        return;
+        
+        // Throttle culling updates to every 3 frames for performance
+        this.cullingUpdateThrottle++
+        if (this.cullingUpdateThrottle < this.CULLING_UPDATE_FREQUENCY) {
+            return
+        }
+        this.cullingUpdateThrottle = 0
+
+        const currentCamera = this.app.stage.pivot
+        
+        // Skip if camera hasn't moved significantly
+        const cameraMoved = Math.abs(currentCamera.x - this.lastCameraPosition.x) > 10 ||
+                          Math.abs(currentCamera.y - this.lastCameraPosition.y) > 10
+        
+        if (!cameraMoved) return
+        
+        this.lastCameraPosition = { x: currentCamera.x, y: currentCamera.y }
+        
+        const bounds = this.getViewportBounds()
+        let visibleCount = 0
+        let hiddenCount = 0
+        
+        // Update visibility for all cullable objects
+        this.cullableObjects.forEach(object => {
+            const wasVisible = object.visible
+            const shouldBeVisible = this.isObjectInViewport(object, bounds)
+            
+            if (wasVisible !== shouldBeVisible) {
+                object.visible = shouldBeVisible
+            }
+            
+            if (shouldBeVisible) {
+                visibleCount++
+            } else {
+                hiddenCount++
+            }
+        })
+        
+        // Debug logging (remove in production)
+        if (this.cullableObjects.size > 0) {
+            console.log(`🎯 Culling: ${visibleCount} visible, ${hiddenCount} hidden (${Math.round(hiddenCount / this.cullableObjects.size * 100)}% culled)`)
+        }
     }
 
     private setUpFadeTiles = () => {
@@ -69,6 +178,9 @@ export class PlayApp extends App {
             tile.y = screenCoordinates.y
             this.fadeTileContainer.addChild(tile)
             this.fadeTiles[key as TilePoint] = tile
+            
+            // 🎯 Add fade tiles to culling system
+            this.addToCullingSystem(tile)
         }
     }
 
@@ -152,8 +264,13 @@ export class PlayApp extends App {
 
         this.fadeOut()
 
+        // 🎯 Enhanced Ticker with Frustum Culling
         PIXI.Ticker.shared.add(() => {
+            // Update player positions
             Object.values(this.players).forEach(player => player.update());
+            
+            // Update frustum culling (throttled)
+            this.updateFrustumCulling();
         });
     }
 
@@ -173,7 +290,7 @@ export class PlayApp extends App {
             // Start position update interval
             this.startPositionUpdates();
 
-            await initializeWebSocket(this.player.username, (data: any) => {
+            await initializeWebSocket(this.player.username, (data: { type: string; player_id?: string; position?: { x: number; y: number }; username?: string }) => {
                 switch (data.type) {
                     case 'position_update':
                         if (data.player_id && data.position) {
@@ -188,6 +305,8 @@ export class PlayApp extends App {
                     case 'player_left':
                         if (data.player_id) {
                             if (this.players[data.player_id]) {
+                                // 🎯 Remove from culling system before destroying
+                                this.removeFromCullingSystem(this.players[data.player_id]);
                                 this.players[data.player_id].destroy();
                                 delete this.players[data.player_id];
                                 console.log('[player_left] Removed:', data.player_id, 'Now:', Object.keys(this.players));
@@ -212,12 +331,10 @@ export class PlayApp extends App {
     private async updatePlayer(playerId: string, position: { x: number; y: number }, username?: string) {
         if (this.players[playerId]) {
             this.players[playerId].setPosition(position.x, position.y);
-            // Update username if provided
-            if (username && this.players[playerId].username !== username) {
+            if (username) {
                 this.players[playerId].updateUsername(username);
             }
         } else {
-            console.log('[updatePlayer] Player not found, spawning:', playerId, position);
             await this.spawnPlayer(playerId, position, username);
         }
     }
@@ -229,6 +346,9 @@ export class PlayApp extends App {
         otherPlayer.setPosition(position.x, position.y);
         this.layers.object.addChild(otherPlayer);
         this.players[playerId] = otherPlayer;
+        
+        // 🎯 Add new player to culling system
+        this.addToCullingSystem(otherPlayer);
     }
 
     private spawnLocalPlayer = async () => {
@@ -240,6 +360,10 @@ export class PlayApp extends App {
             this.player.setPosition(this.realmData.spawnpoint.x, this.realmData.spawnpoint.y)
         }
         this.layers.object.addChild(this.player.parent)
+        
+        // 🎯 Add local player to culling system (though main player should always be visible)
+        this.addToCullingSystem(this.player.parent)
+        
         this.moveCameraToPlayer()
     }
 
@@ -253,6 +377,9 @@ export class PlayApp extends App {
         const y = this.player.parent.y - (this.app.screen.height / 2) / this.scale
         this.app.stage.pivot.set(x, y)
         this.updateFadeOverlay(x, y)
+        
+        // 🎯 Force culling update when camera moves significantly
+        this.updateFrustumCulling()
     }
 
     private updateFadeOverlay = (x: number, y: number) => {
@@ -264,6 +391,9 @@ export class PlayApp extends App {
 
     private resizeEvent = () => {
         this.moveCameraToPlayer()
+        
+        // 🎯 Update culling on resize
+        this.updateFrustumCulling()
     }
 
     private setUpFadeOverlay = () => {
