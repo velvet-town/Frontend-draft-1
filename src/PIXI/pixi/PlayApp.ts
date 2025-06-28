@@ -9,6 +9,22 @@ import { initializeWebSocket, updatePlayerPosition, leaveRoom } from '../multipl
 import { OtherPlayer } from './Player/OtherPlayer'
 import { joinRoom } from '../multiplayer/API_CALLS/Player_Calls'
 
+// Extend Window interface for PIXI global references
+declare global {
+  interface Window {
+    __PIXI_RENDERER__?: PIXI.Renderer
+    __PIXI_APP__?: PIXI.Application
+    __PIXI_PERFORMANCE_DATA__?: {
+      renderTime: number;
+      drawCalls: number;
+      triangles: number;
+      sprites: number;
+      frameCount: number;
+      timestamp: number;
+    }
+  }
+}
+
 // 🎯 Frustum Culling Configuration
 const CULLING_MARGIN = 100; // Extra pixels around viewport for smooth transitions
 
@@ -264,13 +280,20 @@ export class PlayApp extends App {
 
         this.fadeOut()
 
-        // 🎯 Enhanced Ticker with Frustum Culling
+        // 🎯 Expose PIXI renderer globally for performance monitoring
+        window.__PIXI_RENDERER__ = this.app.renderer
+        window.__PIXI_APP__ = this.app
+
+        // 🎯 Enhanced Ticker with Frustum Culling and Performance Tracking
         PIXI.Ticker.shared.add(() => {
             // Update player positions
             Object.values(this.players).forEach(player => player.update());
             
             // Update frustum culling (throttled)
             this.updateFrustumCulling();
+            
+            // 🎯 Track performance metrics
+            this.updatePerformanceMetrics();
         });
     }
 
@@ -628,5 +651,23 @@ export class PlayApp extends App {
                 this.lastSentPosition = currentPosition;
             }
         }, 100);
+    }
+
+    private updatePerformanceMetrics() {
+        // Track performance metrics for the performance monitor
+        if (window.__PIXI_RENDERER__) {
+            // Store current performance data for external access
+            const performanceData = {
+                renderTime: 0, // PIXI doesn't expose this directly
+                drawCalls: 0, // Would need custom tracking
+                triangles: 0, // Would need custom tracking  
+                sprites: this.app.stage.children.length, // Count of top-level sprites
+                frameCount: PIXI.Ticker.shared.FPS,
+                timestamp: performance.now()
+            }
+            
+            // Store in window for PerformanceMonitor to access
+            window.__PIXI_PERFORMANCE_DATA__ = performanceData
+        }
     }
 }

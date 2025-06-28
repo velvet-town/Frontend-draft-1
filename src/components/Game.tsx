@@ -3,6 +3,7 @@ import PixiApp from "./PixiApp"
 import defaultMap from '../PIXI/defaultmap.json'
 import { useNavigate } from '@tanstack/react-router'
 import { leaveRoom } from '../PIXI/multiplayer/API_CALLS/Player_Calls'
+import PerformanceMonitor from './PerformanceMonitor'
 
 const Game = () => {
   const { user } = useAuthStore()
@@ -35,6 +36,7 @@ const Game = () => {
       >
         Leave Room
       </button>
+      <PerformanceMonitor />
       <PixiApp 
         realmData={defaultMap} 
         className='w-full h-full' 
