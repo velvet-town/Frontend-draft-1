@@ -152,7 +152,7 @@ const PerformanceMonitor = () => {
   }
 
   return (
-    <div className="fixed top-4 left-4 z-50 bg-black/80 backdrop-blur-sm border border-gray-600 rounded-lg p-3 text-white font-mono text-xs shadow-lg">
+    <div className="fixed top-4 right-4 z-50 bg-black/80 backdrop-blur-sm border border-gray-600 rounded-lg p-3 text-white font-mono text-xs shadow-lg">
       <div className="flex items-center justify-between mb-2">
         <span className="text-gray-300 font-semibold">Performance Monitor</span>
         <span className="text-gray-500 text-xs">F12 to toggle</span>

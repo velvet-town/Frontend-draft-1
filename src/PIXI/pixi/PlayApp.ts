@@ -330,6 +330,10 @@ export class PlayApp extends App {
                             if (this.players[data.player_id]) {
                                 // 🎯 Remove from culling system before destroying
                                 this.removeFromCullingSystem(this.players[data.player_id]);
+                                // Remove from parent container (this.layers.object)
+                                if (this.players[data.player_id].parent) {
+                                    this.players[data.player_id].parent.removeChild(this.players[data.player_id]);
+                                }
                                 this.players[data.player_id].destroy();
                                 delete this.players[data.player_id];
                                 console.log('[player_left] Removed:', data.player_id, 'Now:', Object.keys(this.players));
