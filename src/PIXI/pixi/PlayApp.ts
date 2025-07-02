@@ -310,9 +310,6 @@ export class PlayApp extends App {
                 }
             }
 
-            // Start position update interval
-            this.startPositionUpdates();
-
             await initializeWebSocket(this.player.username, (data: { type: string; player_id?: string; position?: { x: number; y: number }; username?: string }) => {
                 switch (data.type) {
                     case 'position_update':
@@ -342,6 +339,18 @@ export class PlayApp extends App {
                         break;
                 }
             });
+
+            // Send initial position immediately after WebSocket connection
+            const initialPosition = {
+                x: this.player.parent.x,
+                y: this.player.parent.y
+            };
+            console.log('Sending initial position:', initialPosition);
+            updatePlayerPosition(initialPosition, this.player.username);
+            this.lastSentPosition = initialPosition;
+
+            // Start position update interval
+            this.startPositionUpdates();
         } catch (error) {
             console.error('[MULTIPLAYER] Error:', error);
         }
