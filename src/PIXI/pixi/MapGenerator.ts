@@ -35,6 +35,14 @@ export class App {
     // 🎨 VISUAL SETTINGS
     protected backgroundColor: number = 0x0F0F0F // Dark background color
 
+    // 🎯 Frustum Culling Integration
+    protected onTileAddedCallback?: (sprite: PIXI.Container) => void;
+    
+    // 🚀 Smart Sorting Optimization
+    private sortingDirty: boolean = false;
+    private lastSortTime: number = 0;
+    private readonly SORT_THROTTLE_MS = 16; // ~60fps sorting maximum
+
     /**
      * 🏗️ CONSTRUCTOR - Initialize with map data
      * @param realmData - The complete map data (usually from defaultmap.json)
@@ -42,6 +50,13 @@ export class App {
     constructor(realmData: RealmData) {
         // Deep clone the data to avoid mutations
         this.realmData = JSON.parse(JSON.stringify(realmData))
+    }
+
+    /**
+     * 🎯 Set callback for when tiles are added (for frustum culling)
+     */
+    public setOnTileAddedCallback(callback: (sprite: PIXI.Container) => void) {
+        this.onTileAddedCallback = callback;
     }
 
     /**
@@ -110,9 +125,9 @@ export class App {
             }
         }
 
-        // 🏗️ ARRANGE OBJECTS BY DEPTH
-        // Objects lower on screen appear in front of objects higher up
-        this.sortObjectsByY()
+        // 🏗️ ARRANGE OBJECTS BY DEPTH (optimized)
+        this.markSortingDirty()
+        this.sortObjectsByYOptimized()
     }
 
     /**
@@ -147,6 +162,11 @@ export class App {
         
         // 🏗️ ADD TO THE CORRECT VISUAL LAYER
         this.layers[layer].addChild(sprite)
+
+        // 🎯 Notify callback for frustum culling integration
+        if (this.onTileAddedCallback) {
+            this.onTileAddedCallback(sprite);
+        }
 
         // 🚫 SET UP COLLISION DETECTION
         // Some sprites (like walls, trees) block movement
@@ -225,7 +245,38 @@ export class App {
     }
 
     /**
-     * 🏗️ ARRANGE OBJECTS BY DEPTH
+     * 🚀 Mark that sorting is needed (dirty flag pattern)
+     */
+    public markSortingDirty() {
+        this.sortingDirty = true;
+    }
+
+    /**
+     * 🏗️ ARRANGE OBJECTS BY DEPTH (OPTIMIZED VERSION)
+     * Objects lower on the screen should appear in front of objects higher up
+     * Only sorts when needed and throttles frequency
+     */
+    public sortObjectsByYOptimized = () => {
+        // Only sort if dirty and enough time has passed
+        const now = Date.now();
+        if (!this.sortingDirty || (now - this.lastSortTime) < this.SORT_THROTTLE_MS) {
+            return;
+        }
+        
+        this.sortingDirty = false;
+        this.lastSortTime = now;
+        
+        // Only sort object layer (most dynamic layer)
+        this.layers.object.children.forEach((child) => {
+            child.zIndex = this.getZIndex(child)
+        })
+        
+        // Sort the layer
+        this.layers.object.sortChildren();
+    }
+
+    /**
+     * 🏗️ ARRANGE OBJECTS BY DEPTH (LEGACY VERSION)
      * Objects lower on the screen should appear in front of objects higher up
      * (like a tree at the bottom appears in front of a tree at the top)
      */
