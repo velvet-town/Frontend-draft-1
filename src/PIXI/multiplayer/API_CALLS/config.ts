@@ -1,8 +1,8 @@
-// export const BACKEND_HTTP_URL = 'https://backend-n751.onrender.com'; // Update with your backend URL
-// export const BACKEND_WS_URL = 'wss://backend-n751.onrender.com';
+export const BACKEND_HTTP_URL = 'https://backend-n751.onrender.com'; // Update with your backend URL
+export const BACKEND_WS_URL = 'wss://backend-n751.onrender.com';
 
-export const BACKEND_HTTP_URL = 'http://localhost:8080'; // Update with your backend URL
-export const BACKEND_WS_URL = 'ws://localhost:8080';
+// export const BACKEND_HTTP_URL = 'http://localhost:8080'; // Update with your backend URL
+// export const BACKEND_WS_URL = 'ws://localhost:8080';
 
 export const ENDPOINTS = {
   JOIN_ROOM: '/player/join-room',
