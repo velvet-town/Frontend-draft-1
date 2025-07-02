@@ -51,25 +51,37 @@ const Chat_Component: React.FC<Chat_ComponentProps> = ({ userId, username, playe
         })
     }, [])
 
+    // Sanitize HTML to prevent XSS
+    const sanitizeHtml = (text: string): string => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
+
+    // Limit message length
+    const MAX_MESSAGE_LENGTH = 500;
+
     const handleSendMessage = () => {
-        if (message.trim() !== "") {
-            const newMessage = { text: message, player_id: userId, username }
-            setMessages(prev => [...prev, newMessage])
-            chat.send(message, userId, username)
+        const trimmedMessage = message.trim();
+        if (trimmedMessage !== "" && trimmedMessage.length <= MAX_MESSAGE_LENGTH) {
+            const newMessage = { text: trimmedMessage, player_id: userId, username }
+            setMessages(prev => [...prev.slice(-50), newMessage]) // Keep only last 50 messages
+            chat.send(trimmedMessage, userId, username)
             setMessage("")
         }
     }
 
     const handleSendPrivateMessage = () => {
-        if (privateMessage.trim() !== "" && selectedPlayer) {
+        const trimmedMessage = privateMessage.trim();
+        if (trimmedMessage !== "" && trimmedMessage.length <= MAX_MESSAGE_LENGTH && selectedPlayer) {
             const newMessage = { 
-                text: privateMessage, 
+                text: trimmedMessage, 
                 player_id: userId, 
                 username,
                 timestamp: Date.now()
             }
-            setPrivateMessages(prev => [...prev, newMessage])
-            chat.sendPrivate(privateMessage, userId, selectedPlayer, username)
+            setPrivateMessages(prev => [...prev.slice(-50), newMessage]) // Keep only last 50 messages
+            chat.sendPrivate(trimmedMessage, userId, selectedPlayer, username)
             setPrivateMessage("")
         }
     }
@@ -145,7 +157,7 @@ const Chat_Component: React.FC<Chat_ComponentProps> = ({ userId, username, playe
                                         <div className="text-xs text-gray-500 mb-1">
                                             {msg.username}
                                         </div>
-                                        <div>{msg.text}</div>
+                                        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.text) }} />
                                     </div>
                                 ))}
                             </div>
@@ -154,9 +166,10 @@ const Chat_Component: React.FC<Chat_ComponentProps> = ({ userId, username, playe
                                     <input 
                                         type="text" 
                                         value={message} 
-                                        onChange={(e) => setMessage(e.target.value)}
+                                        onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        placeholder="Type a message..."
+                                        placeholder={`Type a message... (max ${MAX_MESSAGE_LENGTH} chars)`}
+                                        maxLength={MAX_MESSAGE_LENGTH}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                                     />
                                     <button 
@@ -216,7 +229,7 @@ const Chat_Component: React.FC<Chat_ComponentProps> = ({ userId, username, playe
                                         <div className="text-xs text-gray-500 mb-1">
                                             {msg.username} (Private)
                                         </div>
-                                        <div>{msg.text}</div>
+                                        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.text) }} />
                                     </div>
                                 ))}
                             </div>
@@ -225,9 +238,10 @@ const Chat_Component: React.FC<Chat_ComponentProps> = ({ userId, username, playe
                                     <input 
                                         type="text" 
                                         value={privateMessage} 
-                                        onChange={(e) => setPrivateMessage(e.target.value)}
+                                        onChange={(e) => setPrivateMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        placeholder={selectedPlayer ? "Type a private message..." : "Select a player first..."}
+                                        placeholder={selectedPlayer ? `Type a private message... (max ${MAX_MESSAGE_LENGTH} chars)` : "Select a player first..."}
+                                        maxLength={MAX_MESSAGE_LENGTH}
                                         disabled={!selectedPlayer}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSendPrivateMessage()}
                                     />
